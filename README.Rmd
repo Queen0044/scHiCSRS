@@ -1,21 +1,28 @@
+---
+output: github_document
+---
 
 <!-- README.md is generated from README.Rmd. Please edit that file -->
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>",
+  fig.path = "man/figures/README-",
+  out.width = "100%"
+)
+```
 
 # scHiCSRS
 
 <!-- badges: start -->
-
 <!-- badges: end -->
 
-The goal of scHiCSRS is to impute single cell HiC data using a self
-representation smoothing approach.
+The goal of scHiCSRS is to impute single cell HiC data using a self representation smoothing approach.
 
 ## Installation
 
-The scHiCSRS package has the following R-package dependencies: SAVER,
-keras, tensorflow, Rtsne, ggplot2, ggpubr, and mclust. The dependent
-packages will be automatically installed along with scHiCSRS. You can
-use the following commands to install scHiCSRS from GitHub.
+The scHiCSRS package has the following R-package dependencies: SAVER, keras, tensorflow, Rtsne, ggplot2, ggpubr, and mclust. The dependent packages will be automatically installed along with scHiCSRS. You can use the following commands to install scHiCSRS from GitHub.
 
 ``` r
 # Install and load "devtools" package. 
@@ -30,7 +37,7 @@ install_github("Queen0044/scHiCSRS")
 
 This is a basic example which shows you how to solve a common problem:
 
-``` r
+```{r example}
 library(scHiCSRS)
 ## data("simudat")
 #simudat_res=SRS(simudat, windowsize=2, nbins=61, epochs = 100, estimates.only = FALSE)

@@ -1,0 +1,169 @@
+---
+title: "SRS_intro"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{SRS_intro}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>"
+)
+```
+
+```{r setup}
+library(SRS)
+library(mclust)
+```
+
+## 1.Introduction
+Single cell HiC techniques enable us to study the between-cell variability in long-distance interactions and genomic features. However, single cell HiC data usually suffers from excessive zeroes due to a lack of sequencing depth. Among those zeros in scHiC contact matrix, some are structural zero (SZ) because the corresponding pairs do not interact with each other at all, while others are dropout (DO) as a result of low sequencing depth. While those dropouts happen at random, those structural zeros do not.        
+
+
+
+**scHiCB** (Xie and Lin, 2021) imputes sparse single cell Hi-C matrix through a self-representation smoothing approach and distinguishes DO from SZ through a Gaussian mixture model. Different from literature that treats each single cell separately, we borrow informaton not only from the neighborhood in the same cell, but also from other cells at the same position.
+
+In this package, we provide the following main functions:
+
+* **SRS**: the flagship function of SRS, which imputes single cell HiC data through a self-representation smoothing approach. The outputs can be used to facilitate downstream analysis of single cell HiC data.
+
+* **generate_single**: simulates single cell HiC data based on 3D coordinates of chromosome.
+
+* **heatmap**: visualize the data as heatmap.
+
+* **summa**: summarizes imputation accuracy of simulation study.
+
+* **summa2**: calculates PTDO (proportion of true dropouts) when PTSZ (proportion of structural zero) is fixed to be 0.95.
+
+* **summa3**: calculates PTSZ when PTDO is fixed to be 0.80.
+
+* **scHiCB_ROC**: draws ROC curve of imputed data, which can be used to compare diagonostic ability.
+
+
+We will illustrate the usage of these functions in the following sections.
+
+
+## 2. SRS
+
+**MCMCImpute** imputes single cell HiC data through a self-representation smoothing approach.
+
+### 2.1 Input data format 
+
+The following show all the parameters in **SRS** function:
+
+*SRS <- function(X_count, windowsize=2, nbins, lambda1 = NULL, lambda2 = 1e10, initA = NULL, initB = NULL,ncores = 1, MAX_ITER = 4, ABSTOL = 1e-3, learning_rate = 0.0001, epochs = 100, batch_size = 128, run_batch = TRUE, verbose = TRUE, estimates.only = FALSE)*
+
+**X_count** is the observed matrix, with each column being the uppertriangular of a single cell HiC matrix. For a single cell matrix of size $n \times n$, the length of the vector should be $n\times(n-1)/2$. We only need the upper triangular matrix because the HiC matrix are symmetrical. 
+
+Here is an example for the format of single cell matrix:
+
+```{r}
+options(digits = 2)
+library(SRS)
+data(simudat)
+head(simudat)
+```
+
+In this example, there are 10 single cells, and each column is a vector of the upper triangular of each single cell. Since this simudat is in dimension $61\times 61$ so that each single cell has a vector of length $61\times 60/2=1830$.
+
+
+**windowsize** is the size of neighborhood region. A windowsize of w results in a (2w+1)*(2w+1) neighboring submatirx.
+
+**nbins** is the number of bins of the observed single cell HiC matrix.
+
+**lambda1** is the tuning parameter to facilitate feature selection and regularization.
+
+**lambda2** is the tuning parameter to penalize teh diagonal element of the parameter to eliminate the trivial solution of representing an expression level as a linear combination of itself.
+
+**initA** is the initialization of A. The elements of A represent the similarities between loci in the same cell.
+
+**initB** is the initialization of B. The elements of B represent the similarities between all single cells at the same position.
+
+**ncores** is the number of cores to use. Default is 1.
+
+**MAX_ITER** is the Maximum iteration of the external circulation of SRS.
+
+**ABSTOL** is the absolute tolerance of the external circulation.
+
+**learning_rate** is a hyper parameter that controls the speed of adjusting the weights of the network with respect to the loss gradient.
+
+**epochs** is the number of the entire training set going through the entire network.
+
+**batch_size** is the number of examples that are fed to the algorithm at a time.
+
+**run_batch** indicates whether to use batch or to set the number of all the samples as teh value of the batch size. Default is TRUE.
+
+**verbose** indicates whether to output the value of metrics at the end of each epoch. Default is TRUE.
+
+**estimates.only** indicates whether only estimate or not. If TRUE, than output the SRS imputed matrix. If FALSE, A list of information is outputted.
+
+
+### 2.2 Numerical summary of MCMCImpute results
+
+**SRS** outputs the imputed matrix of the same dimension as the input matrix. To make inference on SZ and DO, we apply a Gaussian mixture model on observed zero positions.
+
+Here is a example for the use of SRS:
+
+```{r}
+data("simudat")
+#simudat_res=SRS(simudat, windowsize=2, nbins=61, epochs = 100, estimates.only = FALSE)
+```
+
+The output of MCMCImput is a list of imputed matrix, standard error of estimates, infromation about dataset, size factor used for normalization, time taken to generate predictions, time taken to compute the posterior distribution, and total time for SRS estimation. The following is the imputed matrix.
+
+```{r}
+data("simudat_res")
+head(simudat_res)
+```
+To make inference on SZ and DO, we apply a Gaussian mixture model on the imputed matrix.
+
+```{r, warning = FALSE, message = FALSE}
+  Psz=GM_Psz(simudat, simudat_res, nmix=4)
+  head(Psz)
+```
+
+### 2.3 Visualization of the results
+
+**hm** draws heatmap of HiC data so that we can visually compares the imputation results. For example, the following is the heatmap of observed and imputed single cell of the simudat, where we can see an improvement of sequence depth.
+
+```{r, warning = FALSE, message = FALSE}
+par(mar = c(0.4,0.4,0.4,0.4))
+par(mfrow=c(1,2))
+hm(simudat[,1], 61)
+hm(simudat_res[,1], 61)
+```
+
+
+## 3. Funcitons for generating scHiC data
+
+### 3.1 Generate single cell
+
+**generate_single** is a function designed to simulate scHiC data based on 3D structure of chromosome. It requires 3D coordinates as shown in below. The data str1 is generated from another package called SIMBA. 
+
+```{r, warning = FALSE, message = FALSE}
+data("str1")
+head(str1)
+```
+
+And the idea of simulation is based on the function $log(\lambda_{ij})=\alpha_0+\alpha_1log(d_{ij})+\beta_llog(x_{g,i}x_{g,j})+\beta_mlog(x_{x_{m,i},x_{m,j}})$, where $\alpha_0, \alpha_1$ are set to control the sequence depth, and $x_{l,i}\sim Unif(0.2,0.3)$, $x_{g,i}\sim Unif(0.4,0.5)$, $x_{m,i}\sim Unif(0.9,1)$ are used to account for covariates. 
+
+The following function generates 10 single cells based on str1. The output contains the underline truecount, the position of SZ, and the generated single cells. Truecounts can be used to measure imputation accuracy.
+
+```{r, warning = FALSE, message = FALSE}
+set.seed(1234)
+#Generate 100 random type1 single cells
+data <- generate_single(data=str1, alpha_0=5.6,alpha_1=-1, beta_l=0.9,beta_g=0.9,beta_m=0.9, alpha=0.2, n_single=10) 
+```
+
+### 3.2 Accuracy summary
+
+**summa** summarizes imputation accuracy using the 11 measurements used in the paper.
+```{r, warning = FALSE, message = FALSE}
+data("simudat_true")
+options(digits = 2)
+summa(simudat_true, simudat_res,simudat, Psz)
+```
+

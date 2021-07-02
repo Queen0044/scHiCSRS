@@ -1,0 +1,25 @@
+Package: scHiCSRS
+Type: Package
+Title: A Self Representation Smoothing to impute single cell HiC matrix.
+Version: 0.1.0
+Author: Qing Xie, Shili Lin
+Maintainer: Qing Xie <qingxie1029@gmail.com>
+Description: This package imputes single cell HiC matrix through a self representation smoothing method. Each counts is replaced with a weighted average of itself and predicted value that is determined by neighborhoods region in the same cell and other single cells at the same position.
+License: What license is it under?
+Encoding: UTF-8
+LazyData: true
+Imports: 
+    mclust,
+    SAVER,
+    keras,
+    tensorflow,
+    Rtsne,
+    ggplot2,
+    ggpubr
+RoxygenNote: 7.1.1
+Suggests: 
+    knitr,
+    rmarkdown
+VignetteBuilder: knitr
+Depends: 
+    R (>= 2.10)
